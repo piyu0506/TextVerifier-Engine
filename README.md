@@ -1,6 +1,4 @@
 ---
-
-```md
 # Professional Text Verifier (Spell Checker)
 
 A high-performance **command-line spell checking system** implemented in **C++**, designed to efficiently validate English text and provide intelligent spelling suggestions using classic data structures and algorithms.
