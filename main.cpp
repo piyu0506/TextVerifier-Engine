@@ -129,6 +129,9 @@ private:
     mutable size_t correctQueries = 0;
     mutable chrono::duration<double> totalQueryTime{0};
 
+    mutable size_t totalSuggestionCalls = 0;
+    mutable chrono::duration<double> totalSuggestionTime{0};
+
     int calculateEditDistance(const string& word1, const string& word2) const {
         size_t len1 = word1.size();
         size_t len2 = word2.size();
@@ -182,7 +185,7 @@ private:
         
         auto edits = generateEdits(word);
         for (const auto& edit : edits) {
-            if (edit != word && checkSpelling(edit)) {
+            if (edit != word && searchRaw(edit)) {  
                 int distance = calculateEditDistance(word, edit);
                 candidates.push_back(make_pair(edit, distance));
             }
@@ -221,6 +224,12 @@ private:
         string result = str;
         transform(result.begin(), result.end(), result.begin(), ::tolower);
         return result;
+    }
+
+    bool searchRaw(const string& word) const {
+        string lowerWord = toLower(word);
+        return dictionary.search(lowerWord) ||
+               userDictionary.find(lowerWord) != userDictionary.end();
     }
 
 public:
@@ -272,12 +281,18 @@ public:
     }
 
     vector<string> getSuggestions(const string& word, int maxSuggestions = 5) const {
+        auto suggStart = chrono::high_resolution_clock::now();
+
         vector<string> suggestions = generateEditDistanceSuggestions(toLower(word));
         
         if (suggestions.size() > static_cast<size_t>(maxSuggestions)) {
             suggestions.resize(maxSuggestions);
         }
-        
+
+        auto suggEnd = chrono::high_resolution_clock::now();
+        totalSuggestionCalls++;
+        totalSuggestionTime += (suggEnd - suggStart);
+
         return suggestions;
     }
 
@@ -334,7 +349,11 @@ public:
         cout << "Total queries: " << totalQueries << endl;
         cout << "Correct queries: " << correctQueries << endl;
         cout << "Accuracy: " << getAccuracy() << "%" << endl;
-        cout << "Average query time: " << getAverageQueryTime() * 1000 << " ms" << endl;
+        cout << "Avg spell-check time: " << getAverageQueryTime() * 1000 << " ms" << endl;
+        cout << "Suggestion calls: " << totalSuggestionCalls << endl;
+        double avgSuggTime = totalSuggestionCalls == 0 ? 0.0
+            : (totalSuggestionTime.count() / totalSuggestionCalls) * 1000;
+        cout << "Avg suggestion time: " << avgSuggTime << " ms" << endl;
         cout << "Dictionary size: " << getDictionarySize() << " words" << endl;
         cout << "User dictionary: " << getUserDictionarySize() << " words" << endl;
         cout << "================================\n" << endl;
@@ -344,6 +363,8 @@ public:
         totalQueries = 0;
         correctQueries = 0;
         totalQueryTime = chrono::duration<double>::zero();
+        totalSuggestionCalls = 0;
+        totalSuggestionTime = chrono::duration<double>::zero();
         cout << "Statistics reset" << endl;
     }
 
